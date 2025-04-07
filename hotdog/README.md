@@ -1,0 +1,3 @@
+This is the folder for the fast.ai 'code deployment' [lesson 2](https://course.fast.ai/Lessons/lesson2.html). I created a model to categorize pictures of hotdogs, sandwiches, and burgers in [another notebook](../02-hot-dogs-saving-a-model.ipynb); here I load the model and export it to a file named app.py. This file is then used as a Gradio app on huggingfaces [here](https://huggingface.co/spaces/oupeng/fastai_hotdog).
+
+Probably I should just put all these files in the same place, it doesn't make a ton of sense to have them in 3 different places.
