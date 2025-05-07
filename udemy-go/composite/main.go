@@ -30,6 +30,8 @@ func main() {
 	unfurlSlice := []int{1, 2, 3, 4}
 	fmt.Println("My sum:", variadicsum(unfurlSlice...)) // the ... passes each value separately
 	// fmt.Println(unfurlSlice...) // errors
+	fmt.Println("----------")
+	pointers()
 }
 
 func manipulate(inputslice []int) {
@@ -143,13 +145,12 @@ type human interface {
 	greeting()
 }
 
+func sayHi(h human) {
+	h.greeting()
+}
+
 func structs() {
 	fmt.Println("Struct time")
-	type engineer struct {
-		person   // can also be defined anonymously
-		employed bool
-		language string
-	}
 
 	me := person{
 		first: "John",
@@ -169,6 +170,10 @@ func structs() {
 		employed: true,
 		language: "python",
 	}
+
+	// using the 'human' interface
+	sayHi(resume)
+	sayHi(me)
 
 	directory := map[int]person{
 		1720: me,
@@ -193,4 +198,11 @@ func variadicsum(inputs ...int) int {
 		result += val
 	}
 	return result
+}
+
+func pointers() {
+	fmt.Println("Pointer time")
+	somevariable := 42
+	somepointer := &somevariable
+	fmt.Printf("Var is %v | pointer addr is %v | dereferenced pointer is %v | pointer to pointer is %v\n", somevariable, somepointer, *somepointer, &somepointer)
 }
