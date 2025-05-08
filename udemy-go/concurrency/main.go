@@ -28,6 +28,55 @@ func main() {
 	channelTypes()
 	channelRange()
 	fmt.Println("===================")
+	selectChannel()
+}
+
+func selectChannel() {
+	// var wg sync.WaitGroup
+	ch1 := make(chan int)
+	ch2 := make(chan int)
+	stopchan := make(chan bool)
+	// wg.Add(1)
+	go sendToChan(ch1, ch2, stopchan, 100)
+	for {
+		select {
+		case v, ok := <-ch1:
+			if ok {
+				fmt.Println("Multiple of five:", v)
+			}
+		case v, ok := <-ch2:
+			if ok {
+				fmt.Println("Multiple of seven:", v)
+			}
+		case v := <-stopchan:
+			fmt.Println("Got signal to stop. Returning", v)
+			return
+		}
+	}
+}
+
+// sends multiples of 5 to one chanenl and multiples of 7 to another
+func sendToChan(fives, sevens chan<- int, quit chan<- bool, limit int) {
+	for i := range limit {
+		if i == 0 {
+			continue
+		}
+		if i%5 == 0 {
+			fives <- i
+		}
+		if i%7 == 0 {
+			sevens <- i
+		}
+		if i%35 == 0 {
+			// having the close() causes the select to see 0s
+			// if using close, we should use 'ok' idiom
+			// I don't really need to close with select
+			close(fives)
+			close(sevens)
+			quit <- true
+			break // stop looping
+		}
+	}
 }
 
 func channelRange() {

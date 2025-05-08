@@ -1,0 +1,6 @@
+My own prefix 2025/05/08 15:12:33 main.go:22: This doesn't do anything yet!
+My own prefix 2025/05/08 15:12:33 main.go:25: Got an error in MyAddition: cannot add two negative numbers, don't ask why
+My own prefix 2025/05/08 15:12:33 main.go:29: Got an error in MyAddition: a myError occurred: name TooManyFives number 2 error what happened?
+My own prefix 2025/05/08 15:12:33 main.go:59: Will panic
+My own prefix 2025/05/08 15:12:33 main.go:61: Panicking!! AAAAHHH!!!!
+My own prefix 2025/05/08 15:12:33 panic.go:792: Deferred line
