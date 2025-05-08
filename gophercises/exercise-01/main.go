@@ -90,9 +90,11 @@ func main() {
 	// actually run the quiz
 	timeup := make(chan bool)
 	endquiz := make(chan bool)
-	go runquiz(records, endquiz)
 	go starttimer(timeup)
+	go runquiz(records, endquiz)
 
+	// It would make more sense for the quiz to send the answer on a channel
+	// rather than a 'quiz over' on a channel.
 	select {
 	case <-timeup:
 		fmt.Println("\nTime's up!")
@@ -151,3 +153,58 @@ func runquiz(csvrows [][]string, signalchan chan<- bool) {
 	}
 	signalchan <- true
 }
+
+/*
+Below is the solution provided by gophercises.
+They do not use logfiles and do extra looping and error checking,
+which is the main reason for being fewer lines.
+I should have used a struct. Their code also uses channels better.
+I was not aware of the Timer type, and it makes more sense to send the received answer
+back on a channel instead of doing all the looping in one big function.
+=======================================
+
+type problem struct {
+	q string
+	soln string
+}
+
+func alternate1() {
+	timer := time.NewTimer(time.Duration(*timelimit) * time.Second)
+	for i, p := range problems {
+		select{
+		case <-timer:
+			// time's up!
+			return
+		default:
+			fmt.Printf("%s = ", p.q)
+			var answer string
+			fmt.Scanf("%s", &answer)
+			if answer == p.soln {
+				correctcount++
+			}
+		}
+	}
+}
+
+func alternate2() {
+	timer := time.NewTimer(time.Duration(*timelimit) * time.Second)
+	for i, p := range problems {
+		answerchan := make(chan string)
+		go func() {
+			fmt.Printf("%s = ", p.q)
+			var answer string
+			fmt.Scanf("%s", &answer)
+			answerchan <- answer
+		}()
+		select{
+		case <-timer:
+			// time's up!
+			return
+		case answer := <- answerchan:
+			if answer == p.soln {
+				correctcount++
+			}
+		}
+	}
+}
+*/
