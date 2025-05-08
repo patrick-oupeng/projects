@@ -1,58 +1,61 @@
 package main
 
 import (
-	"bufio"
-	"encoding/csv"
-	"fmt"
-	"io"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+	"bufio"        // for user input - more flexible than fmt scan
+	"encoding/csv" // for opening csv
+	"flag"         // for flags
+	"fmt"          // for only stdout printing
+	"io"           // for multiple logging
+	"log"          // for logging
+	"os"           // for accessing/assigning stdout
+	"strconv"      // for converting scans to int
+	"strings"      // for string trimming and splitting
+	"time"         // for timing
 )
 
 const DEFAULT_FILENAME = "problems.csv" // question,answer
 const DEFAULT_TIME = 30                 // seconds
 const DEFAULT_LOGFILE = "logfile.txt"
 
-var csvname string
-var logname string
-var timelimit int64
+var csvname *string
+var logname *string
+var timelimit *int
 var numquestions int
 var numright int
 
 // Init parses the command line arguments and sets the relevant variables.
 func init() {
 	log.SetPrefix("Quiz ")
-	csvname = DEFAULT_FILENAME
-	logname = DEFAULT_LOGFILE
-	timelimit = DEFAULT_TIME
-	args := os.Args[1:] // first val is program
+	// oh my god, flag package is SO much easier
+	csvname = flag.String("csv", DEFAULT_FILENAME, "a CSV file in the format 'question,answer'")
+	logname = flag.String("logfile", DEFAULT_LOGFILE, "a logfile to write logging output to")
+	timelimit = flag.Int("timelimit", DEFAULT_TIME, "the time limit for the quiz, in seconds. Must be greater than 1")
+	flag.Parse()
+	// args := os.Args[1:] // first val is program
 	// only set variables, don't open anything. Because defer close should happen in main
-	if len(args) > 0 {
-		for index, val := range args {
-			// I probably should have a check if the user passes a flag but no input after
-			if (val == "--csv" || val == "-c") && index+1 < len(args) {
-				csvname = args[index+1]
-			} else if (val == "--limit" || val == "-t") && index+1 < len(args) {
-				timelimit, _ = strconv.ParseInt(args[index+1], 10, 64)
-				if timelimit < 1 {
-					log.Println("Passed in too low of a time limit; using default")
-					timelimit = DEFAULT_TIME
-				}
-			} else if (val == "--logfile" || val == "-l") && index+1 < len(args) {
-				logname = args[index+1]
-			}
-		}
-	}
+	// if len(args) > 0 {
+	// 	for index, val := range args {
+	// 		// I probably should have a check if the user passes a flag but no input after
+	// 		if (val == "--csv" || val == "-c") && index+1 < len(args) {
+	// 			csvname = args[index+1]
+	// 		} else if (val == "--limit" || val == "-t") && index+1 < len(args) {
+	// 			timelimit, _ = strconv.ParseInt(args[index+1], 10, 64)
+	// 			if timelimit < 1 {
+	// 				log.Println("Passed in too low of a time limit; using default")
+	// 				timelimit = DEFAULT_TIME
+	// 			}
+	// 		} else if (val == "--logfile" || val == "-l") && index+1 < len(args) {
+	// 			logname = args[index+1]
+	// 		}
+	// 	}
+	// }
 }
 
 // Main is the main function.
 func main() {
 	// set log file stuff
-	log.Println("Setting log file to", logname)
-	logfile, err := os.Create(logname)
+	log.Println("Setting log file to", *logname)
+	logfile, err := os.Create(*logname)
 	if err != nil {
 		log.Fatalln(err) // logfile hasn't been set so this will print to stdout
 	}
@@ -61,8 +64,8 @@ func main() {
 	log.SetOutput(mw)
 
 	// open csv file
-	log.Println("Opening csv file:", csvname)
-	csvfile, err := os.Open(csvname)
+	log.Println("Opening csv file:", *csvname)
+	csvfile, err := os.Open(*csvname)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -77,15 +80,16 @@ func main() {
 	}
 	numquestions = len(records)
 	log.Printf("Got %d records", numquestions)
-	// actually run the quiz
-	timeup := make(chan bool)
-	endquiz := make(chan bool)
 
 	// I could put this inside the quiz start, but then I have to kick off the timer there as well.
 	fmt.Println("Beginning quiz. After each question type your answer and then enter.")
-	fmt.Println("You have", timelimit, "seconds to complete the quiz.")
+	fmt.Println("You have", *timelimit, "seconds to complete the quiz.")
 	fmt.Println("Press enter to begin.")
 	bufio.NewReader(os.Stdin).ReadString('\n') // wait for a new line
+
+	// actually run the quiz
+	timeup := make(chan bool)
+	endquiz := make(chan bool)
 	go runquiz(records, endquiz)
 	go starttimer(timeup)
 
@@ -99,11 +103,15 @@ func main() {
 }
 
 func starttimer(signalchan chan<- bool) {
-	time.Sleep(time.Duration(timelimit) * time.Second)
+	time.Sleep(time.Duration(*timelimit) * time.Second)
 	signalchan <- true
 }
 
 // Runs the main quiz.
+// Better practice would be to define a struct to hold the question/answer.
+// that would allow me to sanitize the CSV when I pass it into struct
+// Also, I could just compare the user input string to the csv answer string.
+// No need to treat them as numbers!
 func runquiz(csvrows [][]string, signalchan chan<- bool) {
 	var userinput string
 	var inputint int
