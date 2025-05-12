@@ -1,3 +1,4 @@
 .codingvenv
 .ipynb*
 go.mod
+go.sum
