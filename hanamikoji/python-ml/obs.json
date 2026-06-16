@@ -1,0 +1,18 @@
+{
+    "ActivePlayer": 0,
+    "PlayingField": [
+        {"Suit": "Flute",    "Points": 2, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0},
+        {"Suit": "Fan",      "Points": 2, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0},
+        {"Suit": "Scroll",   "Points": 2, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0},
+        {"Suit": "Parasol",  "Points": 3, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0},
+        {"Suit": "Shamisen", "Points": 3, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0},
+        {"Suit": "TeaSet",   "Points": 4, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0},
+        {"Suit": "HairPin",  "Points": 5, "Player1Cards": 0, "Player2Cards": 0, "MarkerPosition": 0}
+    ],
+    "MyActions":       {"Secret": false, "Discard": false, "Gift": false, "Competition": false},
+    "OpponentActions": {"Secret": false, "Discard": false, "Gift": false, "Competition": false},
+    "MyHand":          ["TeaSet", "HairPin", "Parasol", "Shamisen", "Fan", "Scroll"],
+    "MyDiscardedCards": [],
+    "OfferedGift":        null,
+    "OfferedCompetition": null
+}
