@@ -2,6 +2,7 @@ package main
 
 // Used to store public information for a given player. Passed inside StepRequest for ML stuff.
 type Observation struct {
+	ActivePlayer     int                // 0 = player1, 1 = player2; whose perspective this is
 	PlayingField     []*Geisha
 	MyActions        map[ActionName]bool
 	OpponentActions  map[ActionName]bool
@@ -12,6 +13,11 @@ type Observation struct {
 	// set when the opponent must respond to an action
 	OfferedGift        []Suit
 	OfferedCompetition []Suit
+}
+
+type GameResult struct {
+	Done   bool `json:"done"`
+	Winner int  `json:"winner"` // 0 or 1 (player_0/player_1); -1 for tie
 }
 
 // JSON passed to cli for python ML to read

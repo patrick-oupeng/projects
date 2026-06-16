@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
 )
 
 const (
@@ -20,6 +24,7 @@ type Game struct {
 	deck              Deck
 	playingField      []*Geisha
 	pendingAction     *PendingAction
+	debug             io.Writer // receives human-readable output; use io.Discard in engine mode
 }
 
 func (g *Game) playerFromPosition(pos PlayerPosition) *Player {
@@ -59,6 +64,7 @@ func (g *Game) observationFor(player *Player) (Observation, error) {
 		offeredCompetition = g.pendingAction.chosenCompetition
 	}
 	return Observation{
+		ActivePlayer:       int(player.playerPosition),
 		PlayingField:       g.playingField,
 		MyActions:          player.actions,
 		OpponentActions:    opponent.actions,
@@ -138,7 +144,7 @@ func (g *Game) playRound() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("  P%d plays %s\n", currentPlayer.playerPosition+1, g.pendingAction.action.actionName)
+		fmt.Fprintf(g.debug, "  P%d plays %s\n", currentPlayer.playerPosition+1, g.pendingAction.action.actionName)
 
 		if g.pendingAction.action.requiresOpponentResponse {
 			opponentObservation, err := g.observationFor(opponent)
@@ -149,7 +155,7 @@ func (g *Game) playRound() error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("  P%d responds: choice %d\n", opponent.playerPosition+1, g.pendingAction.opponentChoice)
+			fmt.Fprintf(g.debug, "  P%d responds: choice %d\n", opponent.playerPosition+1, g.pendingAction.opponentChoice)
 		}
 
 		err = g.StepResolve(currentPlayer, opponent)
@@ -236,10 +242,9 @@ func (g *Game) ShouldEndRound() bool {
 	return true
 }
 
-func InitializeGame() (*Game, error) {
+func InitializeGame(agent1, agent2 Agent, debug io.Writer) (*Game, error) {
 	deck := shuffleDeck(makeDeck())
 
-	// technically we should deal one card at a time, but with computer-based PRNG it's fine either way
 	player1Cards, err := deck.DrawCards(starting_cards)
 	if err != nil {
 		return nil, fmt.Errorf("failed to draw cards for player 1: %v", err)
@@ -253,19 +258,18 @@ func InitializeGame() (*Game, error) {
 		playerPosition: Player1Position,
 		actions:        defaultActions(),
 		cards:          player1Cards,
-		agent:          &RandomAgent{},
+		agent:          agent1,
 	}
 
 	player2 := &Player{
 		playerPosition: Player2Position,
 		actions:        defaultActions(),
 		cards:          player2Cards,
-		agent:          &RandomAgent{},
+		agent:          agent2,
 	}
 
 	startingPlayer := Player1Position
-	startingPlayerInt := rand.Intn(2) // Randomly choose starting player
-	if startingPlayerInt == int(Player2Position) {
+	if rand.Intn(2) == int(Player2Position) {
 		startingPlayer = Player2Position
 	}
 
@@ -277,44 +281,83 @@ func InitializeGame() (*Game, error) {
 		startingPlayerPos: startingPlayer,
 		currentPlayerPos:  startingPlayer,
 		pendingAction:     nil,
+		debug:             debug,
 	}, nil
 }
 
+func (g *Game) runGame() (WinStatus, error) {
+	var status WinStatus
+	var err error
+	for roundCounter := 1; roundCounter < maxRounds; roundCounter++ {
+		fmt.Fprintf(g.debug, "=== Round %d ===\n", roundCounter)
+		if err = g.playRound(); err != nil {
+			return NoWinner, err
+		}
+		status, err = g.endRound()
+		if err != nil {
+			return NoWinner, err
+		}
+		fmt.Fprintf(g.debug, "  P1: %d pts / %d geishas  |  P2: %d pts / %d geishas\n",
+			g.player1.currentPoints, g.player1.currentGeishas,
+			g.player2.currentPoints, g.player2.currentGeishas)
+		if status != NoWinner {
+			fmt.Fprintf(g.debug, "Winner: P%d\n", int(status))
+			return status, nil
+		}
+		if err = g.ResetForNextRound(); err != nil {
+			return NoWinner, err
+		}
+	}
+	fmt.Fprintf(g.debug, "hit max rounds with no winner\n")
+	if g.player1.currentPoints > g.player2.currentPoints {
+		return Player1Win, nil
+	} else if g.player2.currentPoints > g.player1.currentPoints {
+		return Player2Win, nil
+	} else if g.player1.currentGeishas > g.player2.currentGeishas {
+		return Player1Win, nil
+	}
+	return Player2Win, nil
+}
+
+func winStatusToPlayerIndex(s WinStatus) int {
+	if s == Player1Win {
+		return 0
+	}
+	if s == Player2Win {
+		return 1
+	}
+	return -1
+}
+
 func main() {
-	game, err := InitializeGame()
+	engineMode := flag.Bool("engine", false, "run in engine mode: JSON protocol over stdin/stdout for Python ML training")
+	flag.Parse()
+
+	var agent1, agent2 Agent
+	var debug io.Writer
+
+	if *engineMode {
+		cli := NewCLIAgent()
+		agent1, agent2 = cli, cli
+		debug = os.Stderr
+	} else {
+		agent1, agent2 = &RandomAgent{}, &RandomAgent{}
+		debug = os.Stdout
+	}
+
+	game, err := InitializeGame(agent1, agent2, debug)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize game: %v", err))
 	}
-	var status WinStatus
-	for roundCounter := 1; roundCounter < maxRounds; roundCounter++ {
-		fmt.Printf("=== Round %d ===\n", roundCounter)
-		if err := game.playRound(); err != nil {
-			panic(fmt.Sprintf("playRound: %v", err))
-		}
-		status, err = game.endRound()
-		if err != nil {
-			panic(fmt.Sprintf("endRound: %v", err))
-		}
-		fmt.Printf("  P1: %d pts / %d geishas  |  P2: %d pts / %d geishas\n",
-			game.player1.currentPoints, game.player1.currentGeishas,
-			game.player2.currentPoints, game.player2.currentGeishas)
-		if status != NoWinner {
-			fmt.Printf("Winner: P%d\n", int(status))
-			return
-		}
-		if err := game.ResetForNextRound(); err != nil {
-			panic(fmt.Sprintf("ResetForNextRound: %v", err))
-		}
+
+	status, err := game.runGame()
+	if err != nil {
+		panic(fmt.Sprintf("runGame: %v", err))
 	}
-	fmt.Println("hit max rounds with no winner")
-	if game.player1.currentPoints > game.player2.currentPoints {
-		status = Player1Win
-	} else if game.player2.currentPoints > game.player1.currentPoints {
-		status = Player2Win
-	} else if game.player1.currentGeishas > game.player2.currentGeishas {
-		status = Player1Win
-	} else {
-		status = Player2Win
+
+	if *engineMode {
+		result := GameResult{Done: true, Winner: winStatusToPlayerIndex(status)}
+		data, _ := json.Marshal(result)
+		fmt.Fprintln(os.Stdout, string(data))
 	}
-	fmt.Printf("Winner: P%d\n", int(status))
 }
