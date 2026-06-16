@@ -2,3 +2,7 @@
 .ipynb*
 go.mod
 go.sum
+
+*timetables*
+*.stampvenv*
+*__pycache__*
