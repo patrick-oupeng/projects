@@ -6,3 +6,7 @@ go.sum
 *timetables*
 *.stampvenv*
 *__pycache__*
+
+*hanamikoji/hanamikoji*
+*hanamikoji/obsidian*
+*hanamikoji/go-backend/hanamikoji*
